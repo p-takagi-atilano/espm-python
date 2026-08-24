@@ -1,4 +1,4 @@
-from espm.client import EspmClient
+from espm.client import DATA_QUALITY_METRICS, EspmClient
 from espm.config import EspmConfig, EspmEnvironment
 from espm.errors import (
     EspmApiError,
@@ -14,6 +14,7 @@ __all__ = [
     "EspmApiError",
     "EspmAuthenticationError",
     "EspmAuthorizationError",
+    "DATA_QUALITY_METRICS",
     "EspmClient",
     "EspmConfig",
     "EspmEnvironment",

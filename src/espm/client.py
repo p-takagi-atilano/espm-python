@@ -75,6 +75,34 @@ from espm.xml import (
     parse_xml,
 )
 
+DATA_QUALITY_METRICS: tuple[str, ...] = (
+    "defaultDataFlagInPropertyUses",
+    "temporaryDataFlagInPropertyUses",
+    "dataQualityCheckRunFlag",
+    "dataQualityCheckRunDate",
+    "alertNoPropertyUses",
+    "alertNoGFA",
+    "estimatedValuesEnergy",
+    "estimatedValuesWater",
+    "alertEnergyMeterLessThanTwelveMonthsMeterData",
+    "alertEnergyMeterGap",
+    "alertEnergyMeterOverlap",
+    "alertEnergyMeterNoAssociation",
+    "alertEnergyMeterEntryMoreThan65DaysLong",
+    "alertWaterMeterLessThanTwelveMonthsMeterData",
+    "alertWaterMeterGap",
+    "alertWaterMeterOverlap",
+    "alertWaterMeterNoAssociation",
+    "alertSourceEUIAppearsHighLow",
+    "reasonsForNoScore",
+    "noOfActiveEnergyMetersTotal",
+    "noOfActiveEnergyMetersUsedToComputeMetrics",
+    "noOfActiveEnergyMetersNotUsedToComputeMetrics",
+    "noOfActiveWaterMetersTotal",
+    "noOfActiveWaterMetersUsedToComputeMetrics",
+    "noOfActiveWaterMetersNotUsedToComputeMetrics",
+)
+
 
 class EspmClient:
     """Asynchronous, GET-only client for ESPM web services."""
@@ -521,6 +549,42 @@ class EspmClient:
                 year=year,
                 month=month,
                 metrics=metric_names,
+                measurement_system=measurement_system,
+            ),
+        )
+
+    async def get_property_data_quality(
+        self,
+        property_id: int,
+        *,
+        year: int,
+        month: int = 12,
+        measurement_system: str = "EPA",
+    ) -> PropertyMetrics:
+        """Return ESPM's documented data-quality and meter-coverage metrics."""
+        return await self.get_property_metrics(
+            property_id,
+            year=year,
+            month=month,
+            metrics=DATA_QUALITY_METRICS,
+            measurement_system=measurement_system,
+        )
+
+    async def bulk_get_property_data_quality(
+        self,
+        property_ids: Iterable[int],
+        *,
+        year: int,
+        month: int = 12,
+        measurement_system: str = "EPA",
+    ) -> tuple[BulkResult[PropertyMetrics], ...]:
+        """Return the same ESPM data-quality metrics for properties concurrently."""
+        return await self._bulk(
+            property_ids,
+            lambda property_id: self.get_property_data_quality(
+                property_id,
+                year=year,
+                month=month,
                 measurement_system=measurement_system,
             ),
         )

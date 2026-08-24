@@ -44,6 +44,8 @@ asyncio.run(main())
 - Annual and monthly property metrics, including transparent batching of the
   ESPM limit of ten metrics per request
 - Reporting metric discovery, use-detail metrics, and reasons for missing scores
+- ESPM-calculated property data-quality flags, including estimated/default/temporary values,
+  meter completeness alerts, meter coverage, checker status, and high/low Source EUI alerts
 - Property identifiers and verification records
 - Buildings within properties
 - Aggregate and individual meter details
@@ -51,7 +53,7 @@ asyncio.run(main())
 - Pending connection/property/meter shares and notifications
 - Opt-in acceptance or rejection of pending connections and shares
 - Ordered, concurrency-bounded bulk queries for properties, property uses,
-  meters, meter consumption, and property metrics
+  meters, meter consumption, property metrics, and property data quality
 
 Bulk methods return `BulkResult` objects containing the requested ESPM `id`
 and typed `value`. Results preserve input order and perform no filtering or
@@ -65,6 +67,9 @@ meter_batches = await client.bulk_get_meter_consumption(
     start_date=date(2025, 1, 1),
     end_date=date(2025, 12, 31),
 )
+
+data_quality = await client.get_property_data_quality(123, year=2025)
+portfolio_quality = await client.bulk_get_property_data_quality([123, 456], year=2025)
 ```
 
 Use `EspmEnvironment.TEST` for `https://portfoliomanager.energystar.gov/wstest`

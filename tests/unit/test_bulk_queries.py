@@ -3,9 +3,44 @@ from datetime import date
 import httpx
 import respx
 
-from espm import EspmClient, EspmConfig
+from espm import DATA_QUALITY_METRICS, EspmClient, EspmConfig
 
 BASE = "https://example.test/ws"
+
+
+@respx.mock
+async def test_property_data_quality_uses_documented_metrics_in_api_sized_batches() -> None:
+    route = respx.get(f"{BASE}/property/100/metrics").mock(
+        return_value=httpx.Response(
+            200,
+            content=b"""
+            <propertyMetrics propertyId="100" year="2025" month="12">
+              <metric name="estimatedValuesEnergy" dataType="string"><value>Yes</value></metric>
+              <metric name="alertEnergyMeterGap" dataType="string"><value>Ok</value></metric>
+            </propertyMetrics>""",
+        )
+    )
+
+    async with client() as espm:
+        result = await espm.get_property_data_quality(100, year=2025)
+
+    assert len(route.calls) == 3
+    requested = tuple(
+        name.strip()
+        for call in route.calls
+        for name in call.request.headers["PM-Metrics"].split(",")
+    )
+    assert requested == DATA_QUALITY_METRICS
+    assert all(len(call.request.headers["PM-Metrics"].split(",")) <= 10 for call in route.calls)
+    assert dict(route.calls[0].request.url.params) == {
+        "year": "2025",
+        "month": "12",
+        "measurementSystem": "EPA",
+    }
+    assert [metric.name for metric in result.metrics] == [
+        "estimatedValuesEnergy",
+        "alertEnergyMeterGap",
+    ]
 
 
 def client() -> EspmClient:
