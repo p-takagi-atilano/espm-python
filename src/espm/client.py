@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from datetime import date
 from typing import Any, cast
 from urllib.parse import urlparse
@@ -21,6 +21,7 @@ from espm.models import (
     AdditionalIdentifier,
     AggregateMeterInfo,
     Building,
+    BulkResult,
     ConsumptionRecord,
     Customer,
     Hierarchy,
@@ -194,6 +195,20 @@ class EspmClient:
             page = int(next_page) if next_page else page + 1
         return tuple(gathered)
 
+    async def _bulk[T](
+        self,
+        identifiers: Iterable[int],
+        operation: Callable[[int], Awaitable[T]],
+    ) -> tuple[BulkResult[T], ...]:
+        """Run independent query operations concurrently while preserving input order."""
+        semaphore = asyncio.Semaphore(4)
+
+        async def run(identifier: int) -> BulkResult[T]:
+            async with semaphore:
+                return BulkResult(id=identifier, value=await operation(identifier))
+
+        return tuple(await asyncio.gather(*(run(identifier) for identifier in identifiers)))
+
     async def get_account(self) -> Account:
         return parse_account(await self._xml("/account"))
 
@@ -221,6 +236,12 @@ class EspmClient:
 
     async def get_property(self, property_id: int) -> Property:
         return parse_property(await self._xml(f"/property/{property_id}"), property_id)
+
+    async def bulk_get_properties(
+        self, property_ids: Iterable[int]
+    ) -> tuple[BulkResult[Property], ...]:
+        """Get properties concurrently, preserving the input order and property IDs."""
+        return await self._bulk(property_ids, self.get_property)
 
     async def get_property_hierarchy(self, property_id: int) -> Hierarchy:
         return parse_hierarchy(await self._xml(f"/idHierarchy/property/{property_id}"))
@@ -261,6 +282,18 @@ class EspmClient:
         return parse_property_use(
             await self._xml(f"/propertyUse/{property_use_id}"), property_use_id
         )
+
+    async def bulk_list_property_uses(
+        self, property_ids: Iterable[int]
+    ) -> tuple[BulkResult[tuple[ResourceLink, ...]], ...]:
+        """List property uses concurrently, preserving the input property IDs."""
+        return await self._bulk(property_ids, self.list_property_uses)
+
+    async def bulk_get_property_uses(
+        self, property_use_ids: Iterable[int]
+    ) -> tuple[BulkResult[PropertyUse], ...]:
+        """Get property uses concurrently, preserving the input order and IDs."""
+        return await self._bulk(property_use_ids, self.get_property_use)
 
     async def list_changed_property_uses(
         self, customer_id: int, since: date
@@ -315,6 +348,22 @@ class EspmClient:
 
     async def get_meter(self, meter_id: int) -> Meter:
         return parse_meter(await self._xml(f"/meter/{meter_id}"), meter_id)
+
+    async def bulk_list_meters(
+        self,
+        property_ids: Iterable[int],
+        *,
+        my_access_only: bool | None = None,
+    ) -> tuple[BulkResult[tuple[ResourceLink, ...]], ...]:
+        """List meters concurrently, preserving the input property IDs."""
+        return await self._bulk(
+            property_ids,
+            lambda property_id: self.list_meters(property_id, my_access_only=my_access_only),
+        )
+
+    async def bulk_get_meters(self, meter_ids: Iterable[int]) -> tuple[BulkResult[Meter], ...]:
+        """Get meters concurrently, preserving the input order and meter IDs."""
+        return await self._bulk(meter_ids, self.get_meter)
 
     async def get_meter_hierarchy(self, meter_id: int) -> Hierarchy:
         return parse_hierarchy(await self._xml(f"/idHierarchy/meter/{meter_id}"))
@@ -394,6 +443,23 @@ class EspmClient:
                 break
         return tuple(records)
 
+    async def bulk_get_meter_consumption(
+        self,
+        meter_ids: Iterable[int],
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> tuple[BulkResult[tuple[ConsumptionRecord, ...]], ...]:
+        """Get meter consumption concurrently, preserving the input meter IDs."""
+        return await self._bulk(
+            meter_ids,
+            lambda meter_id: self.get_meter_consumption(
+                meter_id,
+                start_date=start_date,
+                end_date=end_date,
+            ),
+        )
+
     async def get_meter_waste_data(
         self,
         meter_id: int,
@@ -435,6 +501,28 @@ class EspmClient:
     ) -> PropertyMetrics:
         return await self._get_metrics(
             property_id, year, month, metrics, measurement_system, monthly=False
+        )
+
+    async def bulk_get_property_metrics(
+        self,
+        property_ids: Iterable[int],
+        *,
+        year: int,
+        month: int,
+        metrics: Iterable[str],
+        measurement_system: str = "EPA",
+    ) -> tuple[BulkResult[PropertyMetrics], ...]:
+        """Get the same metrics for properties concurrently, preserving input IDs."""
+        metric_names = tuple(metrics)
+        return await self._bulk(
+            property_ids,
+            lambda property_id: self.get_property_metrics(
+                property_id,
+                year=year,
+                month=month,
+                metrics=metric_names,
+                measurement_system=measurement_system,
+            ),
         )
 
     async def get_monthly_property_metrics(

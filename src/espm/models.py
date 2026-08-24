@@ -15,6 +15,13 @@ class EspmModel(BaseModel):
         return value if include_raw else _without_raw(value)
 
 
+class BulkResult[T](EspmModel):
+    """One ordered result from a bulk SDK query."""
+
+    id: int
+    value: T
+
+
 def _without_raw(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _without_raw(item) for key, item in value.items() if key != "raw"}

@@ -50,6 +50,22 @@ asyncio.run(main())
 - Paginated waste records
 - Pending connection/property/meter shares and notifications
 - Opt-in acceptance or rejection of pending connections and shares
+- Ordered, concurrency-bounded bulk queries for properties, property uses,
+  meters, meter consumption, and property metrics
+
+Bulk methods return `BulkResult` objects containing the requested ESPM `id`
+and typed `value`. Results preserve input order and perform no filtering or
+interpretation:
+
+```python
+from datetime import date
+
+meter_batches = await client.bulk_get_meter_consumption(
+    [123, 456],
+    start_date=date(2025, 1, 1),
+    end_date=date(2025, 12, 31),
+)
+```
 
 Use `EspmEnvironment.TEST` for `https://portfoliomanager.energystar.gov/wstest`
 and `EspmEnvironment.LIVE` for `https://portfoliomanager.energystar.gov/ws`.
