@@ -8,6 +8,11 @@ allowlisted connection/share response operations can be enabled explicitly
 with `EspmConfig(allow_mutations=True)`. The SDK does not contain validation,
 compliance, snapshot, export, or other business logic.
 
+Every returned resource is a typed Pydantic model. Models retain unknown ESPM
+fields in `raw` for forward compatibility. Use `model.to_dict()` for compact
+JSON-compatible output or `model.to_dict(include_raw=True)` when unsupported
+source fields are needed.
+
 ```python
 import asyncio
 from espm import EspmClient, EspmConfig, EspmEnvironment

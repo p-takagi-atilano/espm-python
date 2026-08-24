@@ -9,6 +9,19 @@ from pydantic import BaseModel, ConfigDict, Field
 class EspmModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    def to_dict(self, *, include_raw: bool = False) -> dict[str, Any]:
+        """Serialize the model, omitting recursively preserved raw API fields by default."""
+        value = self.model_dump(mode="json")
+        return value if include_raw else _without_raw(value)
+
+
+def _without_raw(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _without_raw(item) for key, item in value.items() if key != "raw"}
+    if isinstance(value, list):
+        return [_without_raw(item) for item in value]
+    return value
+
 
 class SharingAction(StrEnum):
     ACCEPT = "Accept"
