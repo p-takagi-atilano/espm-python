@@ -74,3 +74,8 @@ portfolio_quality = await client.bulk_get_property_data_quality([123, 456], year
 
 Use `EspmEnvironment.TEST` for `https://portfoliomanager.energystar.gov/wstest`
 and `EspmEnvironment.LIVE` for `https://portfoliomanager.energystar.gov/ws`.
+
+## Related projects
+
+- Using Node.js? Check out [portfolio-manager](https://github.com/dopry/portfolio-manager), an
+  unofficial Node.js SDK and CLI for the ENERGY STAR Portfolio Manager API.
