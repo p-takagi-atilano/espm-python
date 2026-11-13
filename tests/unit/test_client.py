@@ -86,6 +86,27 @@ async def test_property_use_is_polymorphic() -> None:
 
 
 @respx.mock
+async def test_use_detail_default_flag_accepts_espm_yes_no() -> None:
+    respx.get(f"{BASE}/propertyUse/78").mock(
+        return_value=httpx.Response(
+            200,
+            content=b"""
+      <office><name>Main Office</name><useDetails>
+      <totalGrossFloorArea currentAsOf="2025-01-01" default="No" units="Square Feet">
+      <value>50000</value></totalGrossFloorArea>
+      <numberOfComputers currentAsOf="2025-01-01" default="Yes">
+      <value>20</value></numberOfComputers>
+      <percentOfficeCooled currentAsOf="2025-01-01" default="N/A">
+      <value>50% or more</value></percentOfficeCooled>
+      </useDetails></office>""",
+        )
+    )
+    async with client() as espm:
+        use = await espm.get_property_use(78)
+    assert [detail.default for detail in use.use_details] == [False, True, None]
+
+
+@respx.mock
 async def test_meter_association_and_consumption() -> None:
     respx.get(f"{BASE}/association/property/100/meter").mock(
         return_value=httpx.Response(

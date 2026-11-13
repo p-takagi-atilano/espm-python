@@ -99,10 +99,12 @@ def decimal(value: str | None) -> Decimal | None:
 def boolean(value: str | None) -> bool | None:
     if value is None:
         return None
+    # xs:boolean ("true"/"false"/"1"/"0") plus ESPM's Yes/No attributes, such as the
+    # use-detail `default` flag. Anything else (including "N/A") is unknown.
     normalized = value.strip().lower()
-    if normalized == "true":
+    if normalized in {"true", "1", "yes"}:
         return True
-    if normalized == "false":
+    if normalized in {"false", "0", "no"}:
         return False
     return None
 
