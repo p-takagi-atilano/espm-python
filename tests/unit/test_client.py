@@ -98,12 +98,26 @@ async def test_use_detail_default_flag_accepts_espm_yes_no() -> None:
       <value>20</value></numberOfComputers>
       <percentOfficeCooled currentAsOf="2025-01-01" default="N/A">
       <value>50% or more</value></percentOfficeCooled>
+      <numberOfWalkInRefrigerationUnits currentAsOf="2025-01-01" default="No">
+      <value>0</value></numberOfWalkInRefrigerationUnits>
+      <numberOfServers currentAsOf="2025-01-01" default="No"><value>1</value></numberOfServers>
+      <onSiteKitchen currentAsOf="2025-01-01" default="No"><value>Yes</value></onSiteKitchen>
       </useDetails></office>""",
         )
     )
     async with client() as espm:
         use = await espm.get_property_use(78)
-    assert [detail.default for detail in use.use_details] == [False, True, None]
+    assert [detail.default for detail in use.use_details] == [
+        False,
+        True,
+        None,
+        False,
+        False,
+        False,
+    ]
+    # Values are not parsed as yes/no flags: 0 and 1 stay numbers, "Yes" stays text.
+    assert [detail.value for detail in use.use_details[3:]] == [Decimal(0), Decimal(1), "Yes"]
+    assert not isinstance(use.use_details[3].value, bool)
 
 
 @respx.mock

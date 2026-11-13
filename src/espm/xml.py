@@ -99,12 +99,26 @@ def decimal(value: str | None) -> Decimal | None:
 def boolean(value: str | None) -> bool | None:
     if value is None:
         return None
-    # xs:boolean ("true"/"false"/"1"/"0") plus ESPM's Yes/No attributes, such as the
-    # use-detail `default` flag. Anything else (including "N/A") is unknown.
     normalized = value.strip().lower()
-    if normalized in {"true", "1", "yes"}:
+    if normalized == "true":
         return True
-    if normalized in {"false", "0", "no"}:
+    if normalized == "false":
+        return False
+    return None
+
+
+def flag(value: str | None) -> bool | None:
+    """Parse ESPM's `default`/`temporary` attributes: true/false or Yes/No; N/A is unknown.
+
+    Kept separate from `boolean`, which `scalar` uses for element values, so values such as
+    "0", "1", "Yes" or "No" in use details are not turned into booleans.
+    """
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if normalized in {"true", "yes"}:
+        return True
+    if normalized in {"false", "no"}:
         return False
     return None
 
@@ -233,8 +247,8 @@ def parse_property(root: etree._Element, property_id: int) -> Property:
         gross_floor_area=GrossFloorArea(
             value=decimal(text(gfa, "value")),
             units=gfa.get("units") if gfa is not None else None,
-            temporary=boolean(gfa.get("temporary")) if gfa is not None else None,
-            default=boolean(gfa.get("default")) if gfa is not None else None,
+            temporary=flag(gfa.get("temporary")) if gfa is not None else None,
+            default=flag(gfa.get("default")) if gfa is not None else None,
         )
         if gfa is not None
         else None,
@@ -268,8 +282,8 @@ def parse_use_detail(element: etree._Element) -> UseDetail:
         id=integer(element.get("id")),
         units=element.get("units"),
         current_as_of=as_date(element.get("currentAsOf")),
-        temporary=boolean(element.get("temporary")),
-        default=boolean(element.get("default")),
+        temporary=flag(element.get("temporary")),
+        default=flag(element.get("default")),
         raw=raw_element(element),
     )
 
